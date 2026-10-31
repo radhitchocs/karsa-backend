@@ -179,8 +179,12 @@ export class SessionsService {
 
     const rawToken = this.signProjectorToken(sessionId);
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-    await this.prisma.projectorToken.create({
-      data: { sessionId, tokenHash },
+    // INSERT … ON CONFLICT DO NOTHING: two concurrent first calls (two presenter tabs, or a page
+    // plus the projector) would otherwise collide on the unique sessionId and 500. The token is
+    // deterministic, so whichever insert wins, both callers return the same value.
+    await this.prisma.projectorToken.createMany({
+      data: [{ sessionId, tokenHash }],
+      skipDuplicates: true,
     });
     return { token: rawToken };
   }

@@ -53,7 +53,8 @@ const PARTICIPANT_ALLOWED_COMMANDS = new Set<string>([
   'quiz.answerSubmit',
 ]);
 
-@WebSocketGateway({ cors: { origin: '*' } })
+// CORS is applied by CorsIoAdapter in main.ts (same allow-list as the HTTP API).
+@WebSocketGateway()
 export class SessionGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
   server!: Server;
