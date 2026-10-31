@@ -1,0 +1,2 @@
+minimumReleaseAgeExclude:
+  - dotenv@18.0.7

@@ -1,0 +1,12 @@
+node_modules
+dist
+.next
+*.tsbuildinfo
+.env
+test-results
+playwright-report
+uploads
+.git
+README.md
+AGENTS.md
+skills-lock.json
