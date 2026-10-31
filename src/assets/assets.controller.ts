@@ -1,5 +1,7 @@
 import {
   Controller,
+  InternalServerErrorException,
+  Logger,
   Post,
   Req,
   UploadedFile,
@@ -7,29 +9,26 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { memoryStorage } from 'multer';
+import { extname } from 'path';
 import { randomBytes } from 'crypto';
 import type { Request } from 'express';
 import { PresenterOnly } from '../auth/decorators';
+import { storeImage } from './storage';
 
-const UPLOADS_DIR = join(process.cwd(), 'uploads');
 const ALLOWED_MIME = /^image\/(jpeg|png|gif|webp|svg\+xml)$/;
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
 @PresenterOnly()
 @Controller('api/assets')
 export class AssetsController {
+  private readonly logger = new Logger(AssetsController.name);
+
   @Post()
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: UPLOADS_DIR,
-        filename: (_req, file, cb) => {
-          const rand = randomBytes(12).toString('hex');
-          cb(null, `${rand}${extname(file.originalname)}`);
-        },
-      }),
+      // Kept in memory (max 5 MB), then written to Supabase Storage or the local uploads/ folder.
+      storage: memoryStorage(),
       limits: { fileSize: MAX_SIZE_BYTES },
       fileFilter: (_req, file, cb) => {
         if (!ALLOWED_MIME.test(file.mimetype)) {
@@ -45,9 +44,16 @@ export class AssetsController {
       },
     }),
   )
-  upload(@UploadedFile() file: Express.Multer.File, @Req() req: Request) {
+  async upload(@UploadedFile() file: Express.Multer.File, @Req() req: Request) {
     if (!file) throw new UnprocessableEntityException('File tidak ditemukan dalam request.');
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    return { url: `${baseUrl}/uploads/${file.filename}` };
+    const name = `${randomBytes(12).toString('hex')}${extname(file.originalname).toLowerCase()}`;
+    // PUBLIC_URL wins; otherwise derive from the request (trust proxy makes this https behind a proxy).
+    const baseUrl = process.env['PUBLIC_URL']?.replace(/\/+$/, '') || `${req.protocol}://${req.get('host')}`;
+    try {
+      return { url: await storeImage(name, file.buffer, file.mimetype, baseUrl) };
+    } catch (err) {
+      this.logger.error(err);
+      throw new InternalServerErrorException('Gagal menyimpan gambar.');
+    }
   }
 }
