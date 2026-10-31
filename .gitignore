@@ -5,3 +5,18 @@ generated/
 *.tsbuildinfo
 test-results/
 uploads/
+
+# Local env variants (keep the committed example)
+.env.*
+!.env.example
+
+# Logs, coverage, OS files
+*.log
+coverage/
+.DS_Store
+
+# AI coding-assistant skill folders and lockfile (local tooling, not project code)
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
