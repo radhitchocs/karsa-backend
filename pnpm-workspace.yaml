@@ -1,2 +1,7 @@
+allowBuilds:
+  '@prisma/engines': true
+  argon2: true
+  esbuild: true
+  prisma: true
 minimumReleaseAgeExclude:
   - dotenv@18.0.7
