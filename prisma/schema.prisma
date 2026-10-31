@@ -1,0 +1,217 @@
+// Karsa — Prisma schema v0.4.0
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  presentations Presentation[]
+}
+
+model Presentation {
+  id         String   @id @default(cuid())
+  title      String
+  slidesJson Json
+  version    Int      @default(1)
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  ownerId    String
+  owner      User     @relation(fields: [ownerId], references: [id])
+  sessions   Session[]
+}
+
+model Session {
+  id             String        @id @default(cuid())
+  code           String        @unique
+  status         SessionStatus @default(LOBBY)
+  slidesSnapshot Json
+  activeSlide    Int           @default(0)
+  divisionSlide  Int           @default(-1)
+  activitiesJson Json          @default("{}")
+  picksJson      Json          @default("[]")
+  paused         Boolean       @default(false)
+  hideContent    Boolean       @default(true)
+  version        Int           @default(1)
+  createdAt      DateTime      @default(now())
+  endedAt        DateTime?
+  presentationId String
+  presentation   Presentation  @relation(fields: [presentationId], references: [id])
+  participants    Participant[]
+  groups          Group[]
+  responses       Response[]
+  questions       Question[]
+  quizSession     QuizSession?
+  projectorToken  ProjectorToken?
+  commandReceipts CommandReceipt[]
+}
+
+enum SessionStatus {
+  LOBBY
+  ACTIVE
+  ENDED
+}
+
+model ProjectorToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  sessionId String   @unique
+  session   Session  @relation(fields: [sessionId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Participant {
+  id              String       @id @default(cuid())
+  name            String
+  tokenHash       String       @unique
+  online          Boolean      @default(false)
+  simulated       Boolean      @default(false)
+  sessionId       String
+  session         Session      @relation(fields: [sessionId], references: [id])
+  createdAt       DateTime     @default(now())
+  groupMembership GroupMember?
+  quizAnswers     QuizAnswer[]
+  questions       Question[]
+  responses       Response[]   @relation("ParticipantResponses")
+  @@index([sessionId])
+}
+
+model Group {
+  id               String        @id @default(cuid())
+  number           Int
+  sessionId        String
+  session          Session       @relation(fields: [sessionId], references: [id])
+  responderVersion Int           @default(1)
+  members          GroupMember[]
+  responses        Response[]    @relation("GroupResponses")
+  quizScores       QuizScore[]
+  @@unique([sessionId, number])
+}
+
+model GroupMember {
+  id            String      @id @default(cuid())
+  groupId       String
+  group         Group       @relation(fields: [groupId], references: [id])
+  participantId String      @unique
+  participant   Participant @relation(fields: [participantId], references: [id])
+  isResponder   Boolean     @default(false)
+  @@unique([groupId, participantId])
+}
+
+model Response {
+  id                 String       @id @default(cuid())
+  slideId            String
+  valueJson          Json
+  updatedAt          DateTime     @updatedAt
+  sessionId          String
+  session            Session      @relation(fields: [sessionId], references: [id])
+  submittedBy        String
+  participantOwnerId String?
+  groupOwnerId       String?
+  participantOwner   Participant? @relation("ParticipantResponses", fields: [participantOwnerId], references: [id])
+  groupOwner         Group?       @relation("GroupResponses", fields: [groupOwnerId], references: [id])
+  @@unique([sessionId, slideId, participantOwnerId])
+  @@unique([sessionId, slideId, groupOwnerId])
+}
+
+model Question {
+  id            String      @id @default(cuid())
+  slideId       String
+  text          String
+  visible       Boolean     @default(false)
+  answered      Boolean     @default(false)
+  sessionId     String
+  session       Session     @relation(fields: [sessionId], references: [id])
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id])
+  createdAt     DateTime    @default(now())
+  @@index([sessionId, slideId])
+}
+
+model QuizSession {
+  id            String            @id @default(cuid())
+  sessionId     String            @unique
+  session       Session           @relation(fields: [sessionId], references: [id])
+  ownerType     OwnerType
+  status        QuizStatus        @default(READY)
+  duration      Int
+  configJson    Json
+  finished      Boolean           @default(false)
+  revealed      Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  questionRuns  QuizQuestionRun[]
+}
+
+enum OwnerType {
+  INDIVIDU
+  KELOMPOK
+}
+enum QuizStatus {
+  READY
+  RUNNING
+  FINISHED
+}
+
+model QuizQuestionRun {
+  id            String      @id @default(cuid())
+  quizSessionId String
+  quizSession   QuizSession @relation(fields: [quizSessionId], references: [id])
+  questionId    String
+  index         Int
+  openedAt      DateTime?
+  deadlineAt    DateTime?
+  closedAt      DateTime?
+  closed          Boolean     @default(false)
+  resultsVisible  Boolean     @default(false)
+  answers         QuizAnswer[]
+  @@unique([quizSessionId, questionId])
+}
+
+model QuizAnswer {
+  id                 String          @id @default(cuid())
+  questionRunId      String
+  questionRun        QuizQuestionRun @relation(fields: [questionRunId], references: [id])
+  requestId          String
+  optionIndex        Int
+  receivedAt         DateTime
+  isCorrect          Boolean
+  computedScore      Int
+  submittedBy        String
+  participantOwnerId String?
+  groupOwnerId       String?
+  participantOwner   Participant?    @relation(fields: [participantOwnerId], references: [id])
+  @@unique([questionRunId, participantOwnerId])
+  @@unique([questionRunId, groupOwnerId])
+  @@unique([questionRunId, requestId])
+}
+
+model QuizScore {
+  id            String    @id @default(cuid())
+  quizSessionId String
+  ownerId       String
+  ownerType     OwnerType
+  totalScore    Int       @default(0)
+  correctCount  Int       @default(0)
+  rank          Int?
+  groupOwner    Group?    @relation(fields: [ownerId], references: [id])
+  @@unique([quizSessionId, ownerId])
+}
+
+model CommandReceipt {
+  id           String   @id @default(cuid())
+  sessionId    String
+  session      Session  @relation(fields: [sessionId], references: [id])
+  actorId      String
+  requestId    String
+  responseJson Json
+  createdAt    DateTime @default(now())
+  @@unique([sessionId, actorId, requestId])
+}
