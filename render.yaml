@@ -1,0 +1,32 @@
+# Render Blueprint for the Karsa backend (free web service, Docker).
+# Secrets marked `sync: false` are entered in the Render dashboard on first deploy.
+# Full walkthrough: docs/DEPLOY.md
+services:
+  - type: web
+    name: karsa-backend
+    runtime: docker
+    plan: free
+    region: singapore # closest Render region to Indonesia; pick the same region for Supabase
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Supabase → Connect → "Session pooler" URI (IPv4; Render cannot reach the IPv6-only direct host)
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # Your Vercel URL(s), comma-separated, e.g. https://karsa.vercel.app
+      - key: CORS_ORIGIN
+        sync: false
+      - key: DEMO_MODE
+        value: "false"
+      - key: PRESENTER_GRACE_MS
+        value: "10000"
+      # Supabase Storage for uploaded slide images (Render's disk is wiped on every deploy/restart)
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: karsa-assets
