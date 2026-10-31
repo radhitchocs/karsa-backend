@@ -21,11 +21,21 @@ export const labels: Record<Kind, string> = {
   kelompok: "Pembagian Kelompok",
   pancing: "Pancing Peserta",
 };
+/** Tiptap/ProseMirror JSON node. Rich text for materi title/body; plain `title`/`body` stay in sync as fallback. */
+export type RichNode = {
+  type: string;
+  attrs?: Record<string, unknown>;
+  content?: RichNode[];
+  marks?: { type: string; attrs?: Record<string, unknown> }[];
+  text?: string;
+};
 export type Slide = {
   id: string;
   type: Kind;
   title: string;
   body: string;
+  titleDoc?: RichNode;
+  bodyDoc?: RichNode;
   options: string[];
   correct: number[];
   explanation: string;
@@ -148,11 +158,22 @@ export const uid = (): string => {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 };
 
+const richNodeSchema: z.ZodType<RichNode> = z.lazy(() =>
+  z.object({
+    type: z.string(),
+    attrs: z.record(z.string(), z.unknown()).optional(),
+    content: z.array(richNodeSchema).optional(),
+    marks: z.array(z.object({ type: z.string(), attrs: z.record(z.string(), z.unknown()).optional() })).optional(),
+    text: z.string().optional(),
+  }),
+);
 export const slideSchema = z.object({
   id: z.string(),
   type: z.enum(kinds),
   title: z.string(),
   body: z.string(),
+  titleDoc: richNodeSchema.optional(),
+  bodyDoc: richNodeSchema.optional(),
   options: z.array(z.string()),
   correct: z.union([z.number(), z.array(z.number())]).transform((v) =>
     typeof v === "number" ? [v] : v,
