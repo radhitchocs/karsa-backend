@@ -20,3 +20,4 @@ coverage/
 .claude/
 .windsurf/
 skills-lock.json
+node_modules.pnpm-backup-*/
