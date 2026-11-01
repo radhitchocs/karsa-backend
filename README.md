@@ -12,7 +12,7 @@ peserta yang sudah pernah dipilih di slide yang sama.
 - **Repo pasangan (frontend):** https://github.com/radhitchocs/karsa-frontend
 - **Live product (frontend):** https://karsa-frontend.vercel.app/
 - **Live backend:** https://ey3fd1lp8646-production-2ljnp1e5.australia-southeast1.suga.run
-- **Demo video:** https://drive.google.com/file/d/1qA4C-z70lP5itGz-peg7jnSw5VpOgZ5T/view?usp=sharing
+- **Demo video:** https://youtube.com/shorts/4d8b00FQk2M?feature=share
 
 ---
 
